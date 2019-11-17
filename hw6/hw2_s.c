@@ -2,22 +2,24 @@
 #include <stdlib.h>
 #include <sys/time.h>
 #include <string.h>
+#include <fcntl.h>
 #define BUFFERSIZE	200
 
 unsigned array[20000];
 struct timeval start_time, end_time;
+void copyFile(int *, int);
 
 unsigned int ascending(const void *a, const void *b){
     unsigned int ia = *(unsigned int *)a;
     unsigned int ib = *(unsigned int *)b;
-    return (array[ia] > array[ib]) - (array[ia] < array[ib]);
+    return (ascending_array[ia] > ascending_array[ib]) - (ascending_array[ia] < ascending_array[ib]);
 }
 
 
 unsigned int descending(const void *a, const void *b){
     unsigned int ia = *(unsigned int *)a;
     unsigned int ib = *(unsigned int *)b;
-    return (array[ia] < array[ib]) - (array[ia] > array[ib]);
+    return (decending_array[ia] < decending_array[ib]) - (decending_array[ia] > decending_array[ib]);
 }
 
 
@@ -27,8 +29,8 @@ int main(int argc, char* argv[])	//argv[1] : mode
 	if(argc == 1)
 		perror("Select mode");
 
-	unsigned int ascending_array_idx[20000];
-	unsigned int decending_array_idx[20000];
+	unsigned int ascending_array[20000];
+	unsigned int decending_array[20000];
 	unsigned int child_pid[2];
 	int fd1, fd2, fd3;
 
@@ -52,10 +54,12 @@ int main(int argc, char* argv[])	//argv[1] : mode
 	srand(time(NULL));
 
 	for (unsigned int i=0; i<20000;i++) {
-		array[i] =rand()%20000;
-		ascending_array_idx[i] = i;
-		decending_array_idx[i] = i;
+		array[i] = rand()%20000;
+		ascending_array[i] = array[i];
+		decending_array[i] = array[i];
 	}
+    
+    copyFile(array, fd1);
 
 	if ((strcmp(argv[1] , "0") == 0)) {
 		gettimeofday(&start_time, NULL);
@@ -66,8 +70,9 @@ int main(int argc, char* argv[])	//argv[1] : mode
 		if(child_pid[0] == 0) {
 			printf("first chld! \n");
 			printf("first parent :%d\n",getppid());
-			qsort(ascending_array_idx, sizeof(ascending_array_idx)/sizeof(int), sizeof(int), ascending);
+			qsort(ascending_array, sizeof(ascending_array)/sizeof(int), sizeof(int), ascending);
 			//FPRINT
+            copyFile(array, fd2);
 			exit(1);	//child process 종료
 		}
 		else
@@ -76,30 +81,27 @@ int main(int argc, char* argv[])	//argv[1] : mode
 		if(child_pid[1] == 0) {
 			printf("second child!\n");
 			printf("second parent : %d\n", getppid());
-			qsort(ascending_array_idx, sizeof(ascending_array_idx)/sizeof(int), sizeof(int), descending);
+			qsort(decending_array, sizeof(decending_array)/sizeof(int), sizeof(int), descending);
 			//FPRINT
+            copyFile(array, fd3);
 			exit(1);
 		}
-		int ch1 = wait(NULL);
-		printf("1 : %d\n", ch1);
-		int ch2 = wait(NULL);
-		printf("2 :%d\n", ch2);
 			
-			gettimeofday(&end_time, NULL);
-			
-			double operating_time = (double)(end_time.tv_sec) + (double)(end_time.tv_usec)/1000000.0 - (double)(start_time.tv_sec) + (double)(start_time.tv_usec)/1000000.0;
-			printf("Elapsed: %f seconds\n", operating_time);
+        gettimeofday(&end_time, NULL);
+        
+        double operating_time = (double)(end_time.tv_sec) + (double)(end_time.tv_usec)/1000000.0 - (double)(start_time.tv_sec) + (double)(start_time.tv_usec)/1000000.0;
+        printf("Elapsed: %f seconds\n", operating_time);
 		
 	}
 	else {
 		gettimeofday(&start_time, NULL);
 
 		//execute the four tasks in sequential
-		qsort(ascending_array_idx, sizeof(ascending_array_idx)/sizeof(int), sizeof(int), ascending);
-		qsort(ascending_array_idx, sizeof(ascending_array_idx)/sizeof(int), sizeof(int), descending);
+		qsort(ascending_array, sizeof(ascending_array)/sizeof(int), sizeof(int), ascending);
+		qsort(decending_array, sizeof(decending_array)/sizeof(int), sizeof(int), descending);
 		
-		//fprintf() 1
-		//fprintf() 2
+        copyFile(array, fd2);
+        copyFile(array, fd3);
 
 		gettimeofday(&end_time, NULL);
 		
@@ -111,14 +113,27 @@ int main(int argc, char* argv[])	//argv[1] : mode
 /**
  file 생성 후 배열의 데이터를 파일에 복사하는 함수
  **/
-void cretefile(int *arr, int e_fd, int arr_len)
+void copyFile(int *arr, int e_fd)
 {
-	int buffer[BUFFERSIZE];
+    int i;
+    
+	for(i=0; i < 20000; i++) {
+        fprintf(e_fd, "%d\t", arr[i]);
+        if(i % 10 == 9)
+            fprintf(e_fd, "\n");
+    }
+    
+    
+    /*
+    char buffer[200];
 	int i;
 
 	for(i=0; i < 20000; i++) {
-		buffer[i] = arr[i];
 		if(i % 200 == 0)
-			write(e_fd, buffer, strlen(buffer));
+            sprintf(buffer, "%d \n", arr[i]);
+        else
+            sprintf(buffer, "%d ", arr[i])
+        write(e_fd, buffer, strlen(buffer));
 	}
+     */
 }
